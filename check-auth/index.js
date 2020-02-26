@@ -1,14 +1,19 @@
 const { stringify: stringifyQueryString } = require('querystring');
 
-const { decode, verify } = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
+// const { decode, verify } = require('jsonwebtoken');
+// const jwksClient = require('jwks-rsa');
 
-const { SigningKey, RsaSigningKey } = jwksClient;
+
+// const { SigningKey, RsaSigningKey } = jwksClient;
 
 const nonceGenerator = require('nonce-generator');
 const pkceChallenge = require('pkce-challenge');
 
-const { parse } = require('cookie');
+// const { parse } = require('cookie');
+
+const {
+  headersCloudfront, getCookies, decodeToken, validate,
+} = require('./utils');
 
 const COGNITO_DOMAIN = 'gyp-code-test';
 const COGNITO_CLIENT_ID = '3gc6acvtrh829d7pmq0qscidrr';
@@ -22,94 +27,94 @@ const COGNITO_IDP = 'COGNITO';
 
 const APP_SIGNIN_URI = '/parseauth';
 
-const getCookies = (headers) => {
-  if (!headers.cookie) {
-    return {};
-  }
-  return headers.cookie.reduce(
-    (reduced, header) => Object.assign(reduced, parse(header.value)),
-    {},
-  );
-};
+// const getCookies = (headers) => {
+//  if (!headers.cookie) {
+//    return {};
+//  }
+//  return headers.cookie.reduce(
+//    (reduced, header) => Object.assign(reduced, parse(header.value)),
+//    {},
+//  );
+// };
 
-const headersCloudfront = {
-  'content-security-policy': [
-    {
-      key: 'Content-Security-Policy',
-      value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com",
-    },
-  ],
-  'strict-transport-security': [
-    {
-      key: 'Strict-Transport-Security',
-      value: 'max-age=31536000; includeSubdomains; preload',
-    },
-  ],
-  'referrer-policy': [
-    {
-      key: 'Referrer-Policy',
-      value: 'same-origin',
-    },
-  ],
-  'x-xss-protection': [
-    {
-      key: 'X-XSS-Protection',
-      value: '1; mode=block',
-    },
-  ],
-  'x-frame-options': [
-    {
-      key: 'X-Frame-Options',
-      value: 'DENY',
-    },
-  ],
-  'x-content-type-options': [
-    {
-      key: 'X-Content-Type-Options',
-      value: 'nosniff',
-    },
-  ],
-};
+// const headersCloudfront = {
+//  'content-security-policy': [
+//    {
+//      key: 'Content-Security-Policy',
+//      value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com",
+//    },
+//  ],
+//  'strict-transport-security': [
+//    {
+//      key: 'Strict-Transport-Security',
+//      value: 'max-age=31536000; includeSubdomains; preload',
+//    },
+//  ],
+//  'referrer-policy': [
+//    {
+//      key: 'Referrer-Policy',
+//      value: 'same-origin',
+//    },
+//  ],
+//  'x-xss-protection': [
+//    {
+//      key: 'X-XSS-Protection',
+//      value: '1; mode=block',
+//    },
+//  ],
+//  'x-frame-options': [
+//    {
+//      key: 'X-Frame-Options',
+//      value: 'DENY',
+//    },
+//  ],
+//  'x-content-type-options': [
+//    {
+//      key: 'X-Content-Type-Options',
+//      value: 'nosniff',
+//    },
+//  ],
+// };
 
-const decodeToken = (jwt) => {
-  const tokenBody = jwt.split('.')[1];
-  const decodableTokenBody = tokenBody.replace(/-/g, '+').replace(/_/g, '/');
-  return JSON.parse(Buffer.from(decodableTokenBody, 'base64').toString());
-};
+// const decodeToken = (jwt) => {
+//  const tokenBody = jwt.split('.')[1];
+//  const decodableTokenBody = tokenBody.replace(/-/g, '+').replace(/_/g, '/');
+//  return JSON.parse(Buffer.from(decodableTokenBody, 'base64').toString());
+// };
 
-const getSigningKey = async (jwksUri, kid) => {
-  const jwksRsa = jwksClient({ cache: true, rateLimit: true, jwksUri });
+// const getSigningKey = async (jwksUri, kid) => {
+//  const jwksRsa = jwksClient({ cache: true, rateLimit: true, jwksUri });
+//
+//  return new Promise((resolve, reject) => jwksRsa.getSigningKey(
+//    kid,
+//    (err, jwk) => (err ? reject(err) : resolve(jwk.rsaPublicKey ? jwk.rsaPublicKey : jwk.publicKey)),
+//  ));
+// };
 
-  return new Promise((resolve, reject) => jwksRsa.getSigningKey(
-    kid,
-    (err, jwk) => (err ? reject(err) : resolve(jwk.rsaPublicKey ? jwk.rsaPublicKey : jwk.publicKey)),
-  ));
-};
-
-const validate = async (jwtToken, jwksUri, issuer, audience) => {
-  const decodedToken = decode(jwtToken, { complete: true });
-  if (!decodedToken) {
-    throw new Error('Cannot parse JWT token');
-  }
-
-  // The JWT contains a "kid" claim, key id, that tells which key was used to sign the token
-  const { kid } = decodedToken.header;
-  const jwk = await getSigningKey(jwksUri, kid);
-
-  // Verify the JWT
-  // This either rejects (JWT not valid), or resolves (JWT valid)
-  const verificationOptions = {
-    audience,
-    issuer,
-    ignoreExpiration: false,
-  };
-  return new Promise((resolve, reject) => verify(
-    jwtToken,
-    jwk,
-    verificationOptions,
-    err => (err ? reject(err) : resolve()),
-  ));
-};
+// const validate = async (jwtToken, jwksUri, issuer, audience) => {
+//  const decodedToken = decode(jwtToken, { complete: true });
+//  if (!decodedToken) {
+//    throw new Error('Cannot parse JWT token');
+//  }
+//
+//  // The JWT contains a "kid" claim, key id, that tells which key was used to sign the token
+//  const { kid } = decodedToken.header;
+//  const jwk = await getSigningKey(jwksUri, kid);
+//
+//  // Verify the JWT
+//  // This either rejects (JWT not valid), or resolves (JWT valid)
+//  const verificationOptions = {
+//    audience,
+//    issuer,
+//    ignoreExpiration: false,
+//  };
+//  return new Promise((resolve, reject) => verify(
+//    jwtToken,
+//    jwk,
+//    verificationOptions,
+//    err => (err ? reject(err) : resolve()),
+//  ));
+// };
 
 exports.handler = async (event) => {
   try {
