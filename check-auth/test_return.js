@@ -1,5 +1,5 @@
-const { handler } = require('./index');
-// const { handler } = require('./dist/bundle');
+// const { handler } = require('./index');
+const { handler } = require('./dist/index');
 
 const event = {
   Records: [
