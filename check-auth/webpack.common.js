@@ -36,6 +36,15 @@ module.exports = {
       extractComments: true,
     })],
   },
+  module: {
+    rules: [
+      {
+        exclude: [
+          `${__dirname}/tests`,
+        ],
+      },
+    ],
+  },
   output: {
     filename: 'index.js',
     path: path.resolve(__dirname, 'dist'),

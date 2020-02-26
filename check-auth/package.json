@@ -1,5 +1,5 @@
 {
-  "name": "check-auth",
+  "name": "lambda-edge-auth-cognito",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,6 +9,7 @@
   "author": "Diego Prieto Torrijos (KEEPLER)",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.19.2",
     "cookie": "^0.4.0",
     "nonce-generator": "^1.0.2",
     "pkce-challenge": "^2.1.0",
