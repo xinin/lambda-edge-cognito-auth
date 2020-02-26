@@ -4,46 +4,6 @@ const jwksClient = require('jwks-rsa');
 const axios = require('axios');
 const { Agent } = require('https');
 
-exports.headersCloudfront = {
-  'content-security-policy': [
-    {
-      key: 'Content-Security-Policy',
-      value: "default-src 'none'; img-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; connect-src 'self' https://*.amazonaws.com https://*.amazoncognito.com",
-    },
-  ],
-  'strict-transport-security': [
-    {
-      key: 'Strict-Transport-Security',
-      value: 'max-age=31536000; includeSubdomains; preload',
-    },
-  ],
-  'referrer-policy': [
-    {
-      key: 'Referrer-Policy',
-      value: 'same-origin',
-    },
-  ],
-  'x-xss-protection': [
-    {
-      key: 'X-XSS-Protection',
-      value: '1; mode=block',
-    },
-  ],
-  'x-frame-options': [
-    {
-      key: 'X-Frame-Options',
-      value: 'DENY',
-    },
-  ],
-  'x-content-type-options': [
-    {
-      key: 'X-Content-Type-Options',
-      value: 'nosniff',
-    },
-  ],
-};
-
-
 exports.getCookies = (headers) => {
   if (!headers.cookie) {
     return {};
@@ -125,8 +85,7 @@ exports.extractAndParseCookies = (cookies, clientId) => {
   };
 };
 
-
-// TODO esto es una mierda y hay que rehacerlo
+// TODO refactor a esta funcion ?¿ es necesario reintentos?
 exports.httpPostWithRetry = async (url, data, config) => {
   const AXIOS_INSTANCE = axios.create({
     httpsAgent: new Agent({ keepAlive: true }),
@@ -134,14 +93,13 @@ exports.httpPostWithRetry = async (url, data, config) => {
   AXIOS_INSTANCE.defaults.headers = {
     ...config.headers,
   };
-  let attempts = 0;
-  while (++attempts) {
+  for (let attempts = 0; attempts < 5; attempts += 1) {
     try {
       console.log('AXIOS', url, data, config);
       return await AXIOS_INSTANCE.post(url, data, config);
     } catch (err) {
       console.error(`HTTP POST to ${url} failed (attempt ${attempts}):`);
-      console.error(err.response && err.response.data || err);
+      console.error((err.response && err.response.data) ? err.response.data : err);
       if (attempts >= 5) {
         // Try 5 times at most
         break;
@@ -182,7 +140,7 @@ exports.getCookieHeaders = (
   cookieSettings,
   expireAllTokens = false,
 ) => {
-  // Set cookies with the exact names and values Amplify uses for seamless interoperability with Amplify
+  // Set cookies with the exact names and values Amplify uses for seamless interoperability with it
   const decodedIdToken = decodeToken(tokens.id_token);
   const tokenUserName = decodedIdToken['cognito:username'];
   const keyPrefix = `CognitoIdentityServiceProvider.${clientId}`;
@@ -208,18 +166,20 @@ exports.getCookieHeaders = (
   });
 
   const cookies = {
-    idTokenKey: `${tokens.id_token}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
-    accessTokenKey: `${tokens.access_token}; ${withCookieDomain(domainName, cookieSettings.accessToken)}`,
-    refreshTokenKey: `${tokens.refresh_token}; ${withCookieDomain(domainName, cookieSettings.refreshToken)}`,
-    lastUserKey: `${tokenUserName}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
-    scopeKey: `${scopesString}; ${withCookieDomain(domainName, cookieSettings.accessToken)}`,
-    userDataKey: `${encodeURIComponent(userData)}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
+    [idTokenKey]: `${tokens.id_token}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
+    [accessTokenKey]: `${tokens.access_token}; ${withCookieDomain(domainName, cookieSettings.accessToken)}`,
+    [refreshTokenKey]: `${tokens.refresh_token}; ${withCookieDomain(domainName, cookieSettings.refreshToken)}`,
+    [lastUserKey]: `${tokenUserName}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
+    [scopeKey]: `${scopesString}; ${withCookieDomain(domainName, cookieSettings.accessToken)}`,
+    [userDataKey]: `${encodeURIComponent(userData)}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
     'amplify-signin-with-hostedUI': `true; ${withCookieDomain(domainName, cookieSettings.accessToken)}`,
   };
 
   // Expire cookies if needed
   if (expireAllTokens) {
-    Object.keys(cookies).forEach(key => cookies[key] = expireCookie(cookies[key]));
+    Object.keys(cookies).forEach((key) => {
+      cookies[key] = expireCookie(cookies[key]);
+    });
   } else if (!tokens.refresh_token) {
     cookies[refreshTokenKey] = expireCookie(cookies[refreshTokenKey]);
   }
@@ -227,7 +187,6 @@ exports.getCookieHeaders = (
   // Return object in format of CloudFront headers
   return Object.entries(cookies).map(([k, v]) => ({ key: 'set-cookie', value: `${k}=${v}` }));
 };
-
 
 exports.createErrorHtml = (title, message, tryAgainHref) => `<!DOCTYPE html>
     <html lang="en">

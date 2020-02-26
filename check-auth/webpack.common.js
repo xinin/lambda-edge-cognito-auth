@@ -1,6 +1,7 @@
 const path = require('path');
 const TerserPlugin = require('terser-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const ZipPlugin = require('zip-webpack-plugin');
 
 module.exports = {
   mode: 'production',
@@ -15,8 +16,11 @@ module.exports = {
     tls: 'empty',
   },
   plugins: [
-    // new CleanWebpackPlugin(['dist/*']) for < v2 versions of CleanWebpackPlugin
     new CleanWebpackPlugin(),
+    new ZipPlugin({
+      filename: 'lambda_edge.zip',
+      exclude: [/\.zip$/, /\.txt$/],
+    }),
   ],
   resolve: {
     extensions: ['.js'],
