@@ -12,13 +12,10 @@ const {
 
 const { headersCloudfront, cookieSettings } = require('./lib/constants');
 
-const COGNITO_DOMAIN = 'gyp-code-test';
-const COGNITO_CLIENT_ID = '3gc6acvtrh829d7pmq0qscidrr';
-const COGNITO_SCOPE = ['email', 'openid'];
-const COGNITO_REGION = 'eu-west-1';
-const COGNITO_USER_POOL_ID = 'eu-west-1_WRRXNv7s5';
-const COGNITO_CLIENT_SECRET = '9qqb7qe7fmr5i5j2i0i6r7hgqimhkk7m78vcmn28e860rruekd6';
-const APP_SIGNIN_URI = '/parseauth';
+const {
+  COGNITO_DOMAIN, COGNITO_CLIENT_ID,
+  COGNITO_SCOPE, COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_SECRET, APP_SIGNIN_URI,
+} = require('./config.json');
 
 exports.handler = async (event) => {
   try {
@@ -31,75 +28,62 @@ exports.handler = async (event) => {
     const domainName = headers.host[0].value;
 
     console.log('cookies', cookies);
+
     // Generate Token after Cognito Response
     if (request.uri === '/parseauth') {
-      try {
-        const { code, state } = parseQueryString(request.querystring);
-        console.log('code', code, 'state', state);
-        if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {
-          throw new Error('Invalid query string. Your query string should include parameters "state" and "code"');
-        }
-        const { nonce: currentNonce, requestedUri } = JSON.parse(state);
-        console.log('currentNonce', currentNonce, 'requestedUri', requestedUri);
-        const { nonce: originalNonce, pkce } = extractAndParseCookies(cookies, COGNITO_CLIENT_ID);
-        console.log('originalNonce', originalNonce, 'pkce', pkce);
-        if (!currentNonce || !originalNonce || currentNonce !== originalNonce) {
-          if (!originalNonce) {
-            throw new Error('Your browser didn\'t send the nonce cookie along, but it is required for security (prevent CSRF).');
-          }
-          throw new Error('Nonce mismatch');
-        }
-        const body = stringifyQueryString({
-          grant_type: 'authorization_code',
-          client_id: COGNITO_CLIENT_ID,
-          redirect_uri: `https://${domainName}${APP_SIGNIN_URI}`,
-          code,
-          code_verifier: pkce,
-        });
-        console.log('body', body);
-
-        const headersToken = { 'Content-Type': 'application/x-www-form-urlencoded' };
-        // If Cognito is assigned to ALB it has to have a Client Secret
-        if (COGNITO_CLIENT_SECRET) {
-          headersToken.Authorization = `Basic ${Buffer.from(`${COGNITO_CLIENT_ID}:${COGNITO_CLIENT_SECRET}`).toString('base64')}`;
-        }
-
-        console.log('headersToken', headersToken);
-
-        // doc https://docs.aws.amazon.com/es_es/cognito/latest/developerguide/token-endpoint.html
-        const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/token`, body, { headers: headersToken });
-
-        console.log('res', res);
-
-        const response = {
-          status: '307',
-          statusDescription: 'Temporary Redirect',
-          headers: {
-            location: [{
-              key: 'location',
-              value: `https://${domainName}${requestedUri || ''}`,
-            }],
-            'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, res.data, domainName, cookieSettings),
-            ...headersCloudfront,
-          },
-        };
-        console.log(JSON.stringify(response));
-        return response;
-      } catch (err) {
-        console.log(err);
-        return {
-          body: createErrorHtml('Bad Request', err.toString()),
-          status: '400', // Note: do not send 403 (!) as we have CloudFront send back index.html for 403's to enable SPA-routing
-          headers: {
-            ...headersCloudfront,
-            'content-type': [{
-              key: 'Content-Type',
-              value: 'text/html; charset=UTF-8',
-            }],
-          },
-        };
+      const { code, state } = parseQueryString(request.querystring);
+      console.info('code', code, 'state', state);
+      if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {
+        throw new Error('Invalid query string. Your query string should include parameters "state" and "code"');
       }
+      const { nonce: currentNonce, requestedUri } = JSON.parse(state);
+      console.info('currentNonce', currentNonce, 'requestedUri', requestedUri);
+
+      const { nonce: originalNonce, pkce } = extractAndParseCookies(cookies, COGNITO_CLIENT_ID);
+      console.info('originalNonce', originalNonce, 'pkce', pkce);
+
+      if (!currentNonce || !originalNonce || currentNonce !== originalNonce) {
+        if (!originalNonce) {
+          throw new Error('Your browser didn\'t send the nonce cookie along, but it is required for security (prevent CSRF).');
+        }
+        throw new Error('Nonce mismatch');
+      }
+
+      const body = stringifyQueryString({
+        grant_type: 'authorization_code',
+        client_id: COGNITO_CLIENT_ID,
+        redirect_uri: `https://${domainName}${APP_SIGNIN_URI}`,
+        code,
+        code_verifier: pkce,
+      });
+
+      console.info('body', body);
+
+      const headersToken = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      // If Cognito is assigned to ALB it has to have a Client Secret
+      if (COGNITO_CLIENT_SECRET) {
+        console.log('Added Authorization header to Cognito token request');
+        headersToken.Authorization = `Basic ${Buffer.from(`${COGNITO_CLIENT_ID}:${COGNITO_CLIENT_SECRET}`).toString('base64')}`;
+        console.log(headersToken);
+      }
+
+      const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/token`, body, { headers: headersToken });
+
+      const response = {
+        status: '307',
+        statusDescription: 'Temporary Redirect',
+        headers: {
+          location: [{
+            key: 'location',
+            value: `https://${domainName}${requestedUri || ''}`,
+          }],
+          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, res.data, domainName, cookieSettings),
+          ...headersCloudfront,
+        },
+      };
+      return response;
     }
+
 
     const requestedUri = `${request.uri}${request.querystring ? `?${request.querystring}` : ''}`;
     const nonce = nonceGenerator(10);
@@ -192,10 +176,10 @@ expect(
     )
 ).toBe(true);
 */
-  } catch (E) {
-    console.log('Lambda execution error', E);
+  } catch (err) {
+    console.error('Lambda execution error', err);
     return {
-      body: createErrorHtml('Bad Request', E.toString()),
+      body: createErrorHtml('Bad Request', err.toString()),
       status: '400', // Note: do not send 403 (!) as we have CloudFront send back index.html for 403's to enable SPA-routing
       headers: {
         ...headersCloudfront,
@@ -205,6 +189,5 @@ expect(
         }],
       },
     };
-    // TODO return error page with custom error
   }
 };

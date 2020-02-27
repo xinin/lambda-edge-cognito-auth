@@ -3,6 +3,11 @@ const TerserPlugin = require('terser-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const ZipPlugin = require('zip-webpack-plugin');
 
+const config = require('./config.json');
+
+console.log('Your configuration is ');
+console.log(config);
+
 module.exports = {
   mode: 'production',
   target: 'node',
