@@ -98,7 +98,13 @@ exports.handler = async (event) => {
           client_id: COGNITO_CLIENT_ID,
           refresh_token: refreshToken,
         });
-        const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}/oauth2/token`, body, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        const headersToken = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        // If Cognito is assigned to ALB it has to have a Client Secret
+        if (COGNITO_CLIENT_SECRET) {
+          console.info('Added Authorization header to Cognito token request');
+          headersToken.Authorization = `Basic ${Buffer.from(`${COGNITO_CLIENT_ID}:${COGNITO_CLIENT_SECRET}`).toString('base64')}`;
+        }
+        const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}/oauth2/token`, body, { headers: headersToken });
         tokens.id_token = res.data.id_token;
         tokens.access_token = res.data.access_token;
       } catch (err) {
