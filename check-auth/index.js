@@ -8,39 +8,35 @@ const {
   decodeToken, validate,
   httpPostWithRetry,
   createErrorHtml,
+  validateRefreshRequest,
 } = require('./lib/utils');
 
 const { headersCloudfront, cookieSettings } = require('./lib/constants');
 
 const {
-  COGNITO_DOMAIN, COGNITO_CLIENT_ID,
+  COGNITO_DOMAIN, COGNITO_CLIENT_ID, APP_AUTH_REFRESH_URI, APP_SIGNOUT_URI,
   COGNITO_SCOPE, COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_SECRET, APP_SIGNIN_URI,
 } = require('./config.json');
 
 exports.handler = async (event) => {
   try {
-    console.log(JSON.stringify(event));
-    console.log('');
+    console.info(JSON.stringify(event));
 
     const { request } = event.Records[0].cf;
     const { headers } = request;
     const cookies = getCookies(headers);
     const domainName = headers.host[0].value;
 
-    console.log('cookies', cookies);
-
-    // Generate Token after Cognito Response
-    if (request.uri === '/parseauth') {
+    // /////////////////////// ParseAuth ///////////////////////
+    if (request.uri === APP_SIGNIN_URI) {
+      console.info('Generating token after Cognito response');
       const { code, state } = parseQueryString(request.querystring);
-      console.info('code', code, 'state', state);
+
       if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {
         throw new Error('Invalid query string. Your query string should include parameters "state" and "code"');
       }
       const { nonce: currentNonce, requestedUri } = JSON.parse(state);
-      console.info('currentNonce', currentNonce, 'requestedUri', requestedUri);
-
       const { nonce: originalNonce, pkce } = extractAndParseCookies(cookies, COGNITO_CLIENT_ID);
-      console.info('originalNonce', originalNonce, 'pkce', pkce);
 
       if (!currentNonce || !originalNonce || currentNonce !== originalNonce) {
         if (!originalNonce) {
@@ -57,14 +53,11 @@ exports.handler = async (event) => {
         code_verifier: pkce,
       });
 
-      console.info('body', body);
-
       const headersToken = { 'Content-Type': 'application/x-www-form-urlencoded' };
       // If Cognito is assigned to ALB it has to have a Client Secret
       if (COGNITO_CLIENT_SECRET) {
-        console.log('Added Authorization header to Cognito token request');
+        console.info('Added Authorization header to Cognito token request');
         headersToken.Authorization = `Basic ${Buffer.from(`${COGNITO_CLIENT_ID}:${COGNITO_CLIENT_SECRET}`).toString('base64')}`;
-        console.log(headersToken);
       }
 
       const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/token`, body, { headers: headersToken });
@@ -84,16 +77,85 @@ exports.handler = async (event) => {
       return response;
     }
 
-
-    const requestedUri = `${request.uri}${request.querystring ? `?${request.querystring}` : ''}`;
-    const nonce = nonceGenerator(10);
     const {
       tokenUserName,
       idToken,
       refreshToken,
+      nonce: originalNonce, accessToken,
     } = extractAndParseCookies(cookies, COGNITO_CLIENT_ID);
+
+    // /////////////////////// Refresh Token ///////////////////////
+
+    if (request.uri === APP_AUTH_REFRESH_URI) {
+      console.info('Refreshing Token');
+      const { requestedUri, nonce: currentNonce } = parseQueryString(request.querystring);
+      validateRefreshRequest(currentNonce, originalNonce, idToken, accessToken, refreshToken);
+
+      const tokens = { id_token: '', access_token: '', refresh_token: '' };
+      try {
+        const body = stringifyQueryString({
+          grant_type: 'refresh_token',
+          client_id: COGNITO_CLIENT_ID,
+          refresh_token: refreshToken,
+        });
+        const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/token`, body, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        tokens.id_token = res.data.id_token;
+        tokens.access_token = res.data.access_token;
+      } catch (err) {
+        tokens.refresh_token = '';
+      }
+      return {
+        status: '307',
+        statusDescription: 'Temporary Redirect',
+        headers: {
+          location: [{
+            key: 'location',
+            value: `https://${domainName}${requestedUri}`,
+          }],
+          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings),
+          ...headersCloudfront,
+        },
+      };
+    }
+
+    // /////////////////////// SignOut ///////////////////////
+    if (request.uri === APP_SIGNOUT_URI) {
+      console.info('Signing Out');
+
+      if (!idToken) {
+        return {
+          body: 'Bad Request',
+          status: '400', // Note: do not send 403 (!) as we have CloudFront send back index.html for 403's to enable SPA-routing
+          statusDescription: 'Bad Request',
+          headers: headersCloudfront,
+        };
+      }
+      const tokens = { id_token: '', access_token: '', refresh_token: refreshToken };
+      const qs = {
+        logout_uri: `https://${domainName}`,
+        client_id: COGNITO_CLIENT_ID,
+      };
+
+      return {
+        status: '307',
+        statusDescription: 'Temporary Redirect',
+        headers: {
+          location: [{
+            key: 'location',
+            value: `https://$${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/logout?${stringifyQueryString(qs)}`,
+          }],
+          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true),
+          ...headersCloudfront,
+        },
+      };
+    }
+
+    // /////////////////////// Default behavior * ///////////////////////
+    const nonce = nonceGenerator(10);
+    const requestedUri = `${request.uri}${request.querystring ? `?${request.querystring}` : ''}`;
+
     if (!cookies || !idToken || !tokenUserName) {
-    // REDIRECCION
+      console.info('User is not authenticated');
       const { code_verifier: codeVerifier, code_challenge: codeChallenge } = pkceChallenge();
 
       const COGNITO_URL = `https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/authorize?${stringifyQueryString(
@@ -123,59 +185,50 @@ exports.handler = async (event) => {
           ...headersCloudfront,
         },
       };
-
-      console.log(JSON.stringify(response));
       return response;
     }
 
-    // VALIDATE
+    console.info('User is authenticated');
     const { exp } = decodeToken(idToken);
-    console.log('exp', exp);
     if ((Date.now() / 1000) - 60 > exp && refreshToken) {
-      /*
+      console.info('Token has expired');
       return {
         status: '307',
         statusDescription: 'Temporary Redirect',
         headers: {
           location: [{
             key: 'location',
-            value: `https://${domainName}${redirectPathAuthRefresh}?${stringifyQueryString({ requestedUri, nonce })}`,
+            value: `https://${domainName}${APP_AUTH_REFRESH_URI}?${stringifyQueryString({ requestedUri, nonce })}`,
           }],
           'set-cookie': [
             { key: 'set-cookie', value: `spa-auth-edge-nonce=${encodeURIComponent(nonce)}; ${cookieSettings.nonce}` },
           ],
-          ...cloudFrontHeaders,
+          ...headersCloudfront,
         },
       };
-      */
-
-      console.log('Ha expirado');
-      // TODO redir a refresh token
     }
-
-    // TODO
-    console.log('estas autenticado TODO');
 
     const tokenIssuer = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${COGNITO_USER_POOL_ID}`;
     const tokenJwksUri = `${tokenIssuer}/.well-known/jwks.json`;
 
     try {
-      const isValid = await validate(idToken, tokenJwksUri, tokenIssuer, COGNITO_CLIENT_ID);
-      console.log(isValid);
+      await validate(idToken, tokenJwksUri, tokenIssuer, COGNITO_CLIENT_ID);
       // Return the request unaltered to allow access to the resource:
       return request;
     } catch (e) {
-      console.log('no validado TODO redir to login');
+      console.info(e.toString());
+      console.log('Removing all cookies');
+      const tokens = { id_token: '', access_token: '', refresh_token: '' };
+      const response = {
+        body: createErrorHtml('Bad Request', ''),
+        status: '400',
+        headers: {
+          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true),
+          ...headersCloudfront,
+        },
+      };
+      return response;
     }
-    /*
-const {verifyChallenge} = require('pkce-challenge');
-expect(
-    verifyChallenge(
-        challenge.code_verifier,
-        challenge.code_challenge
-    )
-).toBe(true);
-*/
   } catch (err) {
     console.error('Lambda execution error', err);
     return {

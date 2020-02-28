@@ -200,3 +200,18 @@ exports.createErrorHtml = (title, message, tryAgainHref) => `<!DOCTYPE html>
           <a href="${tryAgainHref}">Try again</a>
       </body>
     </html>`;
+
+exports.validateRefreshRequest = (
+  currentNonce, originalNonce, idToken, accessToken, refreshToken,
+) => {
+  if (!originalNonce) {
+    throw new Error('Your browser didn\'t send the nonce cookie along, but it is required for security (prevent CSRF).');
+  } else if (currentNonce !== originalNonce) {
+    throw new Error('Nonce mismatch');
+  }
+  Object.entries({ idToken, accessToken, refreshToken }).forEach(([tokenType, token]) => {
+    if (!token) {
+      throw new Error(`Missing ${tokenType}`);
+    }
+  });
+};

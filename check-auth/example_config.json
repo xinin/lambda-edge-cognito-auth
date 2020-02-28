@@ -5,5 +5,7 @@
   "COGNITO_SCOPE": ["email", "openid"],
   "COGNITO_REGION": "eu-west-1",
   "COGNITO_CLIENT_SECRET": "ONLY IF NECESSARY",
-  "APP_SIGNIN_URI": "/parseauth"
+  "APP_SIGNIN_URI": "/parseauth",
+  "APP_SIGNOUT_URI": "/signout",
+  "APP_AUTH_REFRESH_URI" : "/refreshauth"
 }
