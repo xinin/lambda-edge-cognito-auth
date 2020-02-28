@@ -60,7 +60,7 @@ exports.handler = async (event) => {
         headersToken.Authorization = `Basic ${Buffer.from(`${COGNITO_CLIENT_ID}:${COGNITO_CLIENT_SECRET}`).toString('base64')}`;
       }
 
-      const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/token`, body, { headers: headersToken });
+      const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}/oauth2/token`, body, { headers: headersToken });
 
       const response = {
         status: '307',
@@ -98,7 +98,7 @@ exports.handler = async (event) => {
           client_id: COGNITO_CLIENT_ID,
           refresh_token: refreshToken,
         });
-        const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/token`, body, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        const res = await httpPostWithRetry(`https://${COGNITO_DOMAIN}/oauth2/token`, body, { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
         tokens.id_token = res.data.id_token;
         tokens.access_token = res.data.access_token;
       } catch (err) {
@@ -142,7 +142,7 @@ exports.handler = async (event) => {
         headers: {
           location: [{
             key: 'location',
-            value: `https://$${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/logout?${stringifyQueryString(qs)}`,
+            value: `https://$${COGNITO_DOMAIN}/logout?${stringifyQueryString(qs)}`,
           }],
           'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true),
           ...headersCloudfront,
@@ -158,7 +158,7 @@ exports.handler = async (event) => {
       console.info('User is not authenticated');
       const { code_verifier: codeVerifier, code_challenge: codeChallenge } = pkceChallenge();
 
-      const COGNITO_URL = `https://${COGNITO_DOMAIN}.auth.eu-west-1.amazoncognito.com/oauth2/authorize?${stringifyQueryString(
+      const COGNITO_URL = `https://${COGNITO_DOMAIN}/oauth2/authorize?${stringifyQueryString(
         {
           redirect_uri: `https://${domainName}${APP_SIGNIN_URI}`,
           response_type: 'code',

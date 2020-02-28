@@ -1,5 +1,5 @@
 {
-  "COGNITO_DOMAIN": "",
+  "COGNITO_DOMAIN": "my-cognito.auth.eu-west-1.amazoncognito.com",
   "COGNITO_CLIENT_ID": "",
   "COGNITO_USER_POOL_ID": "",
   "COGNITO_SCOPE": ["email", "openid"],
