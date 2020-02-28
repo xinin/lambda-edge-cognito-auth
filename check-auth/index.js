@@ -81,7 +81,8 @@ exports.handler = async (event) => {
       tokenUserName,
       idToken,
       refreshToken,
-      nonce: originalNonce, accessToken,
+      nonce: originalNonce,
+      accessToken,
     } = extractAndParseCookies(cookies, COGNITO_CLIENT_ID);
 
     // /////////////////////// Refresh Token ///////////////////////
@@ -91,7 +92,7 @@ exports.handler = async (event) => {
       const { requestedUri, nonce: currentNonce } = parseQueryString(request.querystring);
       validateRefreshRequest(currentNonce, originalNonce, idToken, accessToken, refreshToken);
 
-      const tokens = { id_token: '', access_token: '', refresh_token: '' };
+      const tokens = { id_token: idToken, access_token: idToken, refresh_token: refreshToken };
       try {
         const body = stringifyQueryString({
           grant_type: 'refresh_token',
@@ -136,7 +137,7 @@ exports.handler = async (event) => {
           headers: headersCloudfront,
         };
       }
-      const tokens = { id_token: '', access_token: '', refresh_token: refreshToken };
+      const tokens = { id_token: idToken, access_token: idToken, refresh_token: refreshToken };
       const qs = {
         logout_uri: `https://${domainName}`,
         client_id: COGNITO_CLIENT_ID,
@@ -148,7 +149,7 @@ exports.handler = async (event) => {
         headers: {
           location: [{
             key: 'location',
-            value: `https://$${COGNITO_DOMAIN}/logout?${stringifyQueryString(qs)}`,
+            value: `https://${COGNITO_DOMAIN}/logout?${stringifyQueryString(qs)}`,
           }],
           'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true),
           ...headersCloudfront,
