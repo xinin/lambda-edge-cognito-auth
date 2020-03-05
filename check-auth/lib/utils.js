@@ -139,6 +139,7 @@ exports.getCookieHeaders = (
   domainName,
   cookieSettings,
   expireAllTokens = false,
+  expireNoncePke = false,
 ) => {
   // Set cookies with the exact names and values Amplify uses for seamless interoperability with it
   const decodedIdToken = decodeToken(tokens.id_token);
@@ -174,6 +175,13 @@ exports.getCookieHeaders = (
     [userDataKey]: `${encodeURIComponent(userData)}; ${withCookieDomain(domainName, cookieSettings.idToken)}`,
     'amplify-signin-with-hostedUI': `true; ${withCookieDomain(domainName, cookieSettings.accessToken)}`,
   };
+
+  if (expireNoncePke) {
+    cookies.push(
+      { 'spa-auth-edge-nonce': 'none; Path=/; Secure; HttpOnly; Max-Age=0; SameSite=Lax' },
+      { 'spa-auth-edge-pkce': 'none; Path=/; Secure; HttpOnly; Max-Age=0; SameSite=Lax' },
+    );
+  }
 
   // Expire cookies if needed
   if (expireAllTokens) {

@@ -219,13 +219,13 @@ exports.handler = async (event) => {
     const tokenJwksUri = `${tokenIssuer}/.well-known/jwks.json`;
 
     try {
+      console.log('VALIDATE');
       await validate(idToken, tokenJwksUri, tokenIssuer, COGNITO_CLIENT_ID);
       // Return the request unaltered to allow access to the resource:
       return request;
     } catch (e) {
       console.info(e.toString());
-      console.log('Removing all cookies');
-      const tokens = { id_token: '', access_token: '', refresh_token: '' };
+      const tokens = { id_token: idToken, access_token: idToken, refresh_token: refreshToken };
       const response = {
         body: createErrorHtml('Bad Request', ''),
         status: '400',
