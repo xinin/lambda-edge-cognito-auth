@@ -170,7 +170,7 @@ exports.handler = async (event) => {
           redirect_uri: `https://${domainName}${APP_SIGNIN_URI}`,
           response_type: 'code',
           client_id: COGNITO_CLIENT_ID,
-          state: JSON.stringify({ nonce, requestedUri }),
+          state: encodeURIComponent(JSON.stringify({ nonce, requestedUri })),
           scope: COGNITO_SCOPE.join(' '),
           code_challenge_method: 'S256',
           code_challenge: codeChallenge,
