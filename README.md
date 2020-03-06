@@ -27,13 +27,13 @@ The following are the three main parts to the solution’s flow:
 
 1. Clone Git Repository
     `git clone https://servidor0008.cepsacorp.com/platform/poc-lambda-edge-auth-cognito.git`
-1. Copy file example_config.json and name it to config.json
-1. Complete config.json with all the necessary information
-1. Execute npm install
-1. Execute npm run build
-1. Use the generated zip in /dist/lambda_edge.zip to create your lambda edge
-1. Assign this Lambda function to your Cloudfront distribution on the the desired path 
-    1. Use the Cloudfront Event Viewer Request
-    1. It is not necessary to include the body
-    1. Make sure that your Cloudfront behavior is forwarding query string and headers
+2. Copy file `example_config.json` and name it to `config.json`
+    1. Complete `config.json` with all the necessary information
+3. Execute `npm install`
+4. Execute `npm run build`
+5. Use the generated zip in `/dist/lambda_edge.zip` to create your Lambda@Edge
+6. **Assign** this Lambda@Edge function to your Cloudfront distribution on the the **desired path**
+    1. Use the Cloudfront Event `Viewer Request`
+    1. It is **not necessary to include the body**
+    1. Make sure that your Cloudfront behavior is **forwarding query string and headers**
 
