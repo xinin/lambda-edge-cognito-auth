@@ -28,7 +28,7 @@ The following are the three main parts to the solution’s flow:
 1. Clone Git Repository
     ````bash
     git clone https://servidor0008.cepsacorp.com/platform/poc-lambda-edge-auth-cognito.git
-2. Copy file `example_config.json` and name it to `config.json`
+2. Copy file `example_config.json` and name it as a `config.json`
     1. Complete `config.json` with all the necessary information
 3. Execute 
     ````bash
