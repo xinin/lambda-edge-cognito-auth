@@ -1,13 +1,13 @@
 {
   "name": "lambda-edge-auth-cognito",
   "version": "1.0.0",
-  "description": "",
+  "author": "Diego Prieto Torrijos (KEEPLER)",
+  "description": "Authorization@Edge using cookies: Protect your Amazon CloudFront content from being downloaded by unauthenticated users",
+  "license": "ISC",  
   "main": "index.js",
   "scripts": {
     "build": "webpack --config webpack.common.js"
   },
-  "author": "Diego Prieto Torrijos (KEEPLER)",
-  "license": "ISC",
   "dependencies": {
     "axios": "^0.19.2",
     "cookie": "^0.4.0",
