@@ -186,8 +186,8 @@ exports.handler = async (event) => {
             value: COGNITO_URL,
           }],
           'set-cookie': [
-            { key: 'set-cookie', value: `spa-auth-edge-nonce=${encodeURIComponent(nonce)};  Path=/; Secure; HttpOnly; Max-Age=1800; SameSite=Lax` },
-            { key: 'set-cookie', value: `spa-auth-edge-pkce=${encodeURIComponent(codeVerifier)};  Path=/; Secure; HttpOnly; Max-Age=1800; SameSite=Lax` },
+            { key: 'set-cookie', value: `spa-auth-edge-nonce=${encodeURIComponent(nonce)};  ${cookieSettings['spa-auth-edge-nonce']}` },
+            { key: 'set-cookie', value: `spa-auth-edge-pkce=${encodeURIComponent(codeVerifier)};  ${cookieSettings['spa-auth-edge-pkce']}` },
           ],
           ...headersCloudfront,
         },
@@ -208,7 +208,7 @@ exports.handler = async (event) => {
             value: `https://${domainName}${APP_AUTH_REFRESH_URI}?${stringifyQueryString({ requestedUri, nonce })}`,
           }],
           'set-cookie': [
-            { key: 'set-cookie', value: `spa-auth-edge-nonce=${encodeURIComponent(nonce)}; ${cookieSettings.nonce}` },
+            { key: 'set-cookie', value: `spa-auth-edge-nonce=${encodeURIComponent(nonce)}; ${cookieSettings['spa-auth-edge-nonce']}` },
           ],
           ...headersCloudfront,
         },
