@@ -151,7 +151,7 @@ exports.handler = async (event) => {
             key: 'location',
             value: `https://${COGNITO_DOMAIN}/logout?${stringifyQueryString(qs)}`,
           }],
-          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true),
+          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true, true),
           ...headersCloudfront,
         },
       };
@@ -230,7 +230,7 @@ exports.handler = async (event) => {
         body: createErrorHtml('Bad Request', ''),
         status: '400',
         headers: {
-          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true),
+          'set-cookie': getCookieHeaders(COGNITO_CLIENT_ID, COGNITO_SCOPE, tokens, domainName, cookieSettings, true, true),
           ...headersCloudfront,
         },
       };
