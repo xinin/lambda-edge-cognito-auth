@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "author": "Diego Prieto Torrijos (KEEPLER)",
   "description": "Authorization@Edge using cookies: Protect your Amazon CloudFront content from being downloaded by unauthenticated users",
-  "license": "ISC",  
+  "license": "ISC",
   "main": "index.js",
   "scripts": {
     "build": "webpack --config webpack.common.js"
