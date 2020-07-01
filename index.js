@@ -9,13 +9,16 @@ const {
   httpPostWithRetry,
   createErrorHtml,
   validateRefreshRequest,
+  webserverRedirect,
 } = require('./lib/utils');
 
 const { headersCloudfront, cookieSettings } = require('./lib/constants');
 
 const {
-  COGNITO_DOMAIN, COGNITO_CLIENT_ID, APP_AUTH_REFRESH_URI, APP_SIGNOUT_URI,
-  COGNITO_SCOPE, COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_SECRET, APP_SIGNIN_URI,
+  COGNITO_DOMAIN, COGNITO_CLIENT_ID, COGNITO_SCOPE,
+  COGNITO_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_SECRET,
+  APP_AUTH_REFRESH_URI, APP_SIGNOUT_URI, APP_SIGNIN_URI,
+  WEBSERVER_CONF,
 } = require('./config.json');
 
 exports.handler = async (event) => {
@@ -222,7 +225,8 @@ exports.handler = async (event) => {
       console.log('VALIDATE');
       await validate(idToken, tokenJwksUri, tokenIssuer, COGNITO_CLIENT_ID);
       // Return the request unaltered to allow access to the resource:
-      return request;
+      // return request;
+      return webserverRedirect(request, WEBSERVER_CONF);
     } catch (e) {
       console.info(e.toString());
       const tokens = { id_token: idToken, access_token: idToken, refresh_token: refreshToken };

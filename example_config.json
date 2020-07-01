@@ -7,5 +7,13 @@
   "COGNITO_CLIENT_SECRET": "ONLY IF NECESSARY",
   "APP_SIGNIN_URI": "/parseauth",
   "APP_SIGNOUT_URI": "/signout",
-  "APP_AUTH_REFRESH_URI" : "/refreshauth"
+  "APP_AUTH_REFRESH_URI" : "/refreshauth",
+  "WEBSERVER_CONF": { 
+    "ENABLED" : true || false,
+    "SPA_MODE": true || false, // reacts, angular that use root index.html 
+    "EXCLUDE_PATHS": [ //paths withouts webserver redirections
+      "/my-private-api",
+      "/my-private-api-2"
+    ]
+  }
 }
